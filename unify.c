@@ -242,7 +242,7 @@ unify_hash(struct mdfour *hash, const char *fname)
 {
 	char *data;
 	size_t size;
-	if (!read_file(fname, 0, &data, &size)) {
+	if (!read_file(fname, 0, false, &data, &size)) {
 		stats_update(STATS_PREPROCESSOR);
 		return -1;
 	}
