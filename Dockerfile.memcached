@@ -1,0 +1,21 @@
+FROM ubuntu:16.04
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+                gcc \
+                make \
+                autoconf \
+                gperf \
+                memcached \
+                libmemcached-dev \
+                zlib1g-dev \
+        && rm -rf /var/lib/apt/lists/*
+
+RUN useradd -ms /bin/bash ccache
+USER ccache
+WORKDIR /home/ccache
+COPY --chown=ccache . .
+
+RUN ./autogen.sh \
+        && ./configure --enable-memcached \
+        && make \
+        && make test
