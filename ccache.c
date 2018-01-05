@@ -618,12 +618,16 @@ remember_include_file(char *path, struct mdfour *cpp_hash, bool system)
 		}
 	}
 
+	// The comparison using >= is intentional, due to a possible race between
+	// starting compilation and writing the include file. See also the notes
+	// under "Performance" in MANUAL.txt.
 	if (!(conf->sloppiness & SLOPPY_INCLUDE_FILE_MTIME)
 	    && st.st_mtime >= time_of_compilation) {
 		cc_log("Include file %s too new", path);
 		goto failure;
 	}
 
+	// The same >= logic as above applies to the change time of the file.
 	if (!(conf->sloppiness & SLOPPY_INCLUDE_FILE_CTIME)
 	    && st.st_ctime >= time_of_compilation) {
 		cc_log("Include file %s ctime too new", path);
@@ -1813,7 +1817,9 @@ get_object_name_from_cpp(struct args *args, struct mdfour *hash)
 		hash_string(hash, input_file);
 
 		hash_delimiter(hash, "unifycpp");
-		if (unify_hash(hash, path_stdout) != 0) {
+
+		bool debug_unify = getenv("CCACHE_DEBUG_UNIFY");
+		if (unify_hash(hash, path_stdout, debug_unify) != 0) {
 			stats_update(STATS_ERROR);
 			cc_log("Failed to unify %s", path_stdout);
 			failed();
@@ -2714,8 +2720,8 @@ cc_process_args(struct args *args, struct args **preprocessor_args,
 
 		// Handle cuda "-optf" and "--options-file" argument.
 		if (str_eq(argv[i], "-optf") || str_eq(argv[i], "--options-file")) {
-			if (i > argc) {
-				cc_log("Expected argument after -optf/--options-file");
+			if (i == argc - 1) {
+				cc_log("Expected argument after %s", argv[i]);
 				stats_update(STATS_ARGS);
 				result = false;
 				goto out;
@@ -2816,7 +2822,7 @@ cc_process_args(struct args *args, struct args **preprocessor_args,
 		// Special handling for -x: remember the last specified language before the
 		// input file and strip all -x options from the arguments.
 		if (str_eq(argv[i], "-x")) {
-			if (i == argc-1) {
+			if (i == argc - 1) {
 				cc_log("Missing argument to %s", argv[i]);
 				stats_update(STATS_ARGS);
 				result = false;
@@ -2837,7 +2843,7 @@ cc_process_args(struct args *args, struct args **preprocessor_args,
 
 		// We need to work out where the output was meant to go.
 		if (str_eq(argv[i], "-o")) {
-			if (i == argc-1) {
+			if (i == argc - 1) {
 				cc_log("Missing argument to %s", argv[i]);
 				stats_update(STATS_ARGS);
 				result = false;
@@ -2900,7 +2906,7 @@ cc_process_args(struct args *args, struct args **preprocessor_args,
 			bool separate_argument = (strlen(argv[i]) == 3);
 			if (separate_argument) {
 				// -MF arg
-				if (i >= argc - 1) {
+				if (i == argc - 1) {
 					cc_log("Missing argument to %s", argv[i]);
 					stats_update(STATS_ARGS);
 					result = false;
@@ -2930,7 +2936,7 @@ cc_process_args(struct args *args, struct args **preprocessor_args,
 			char *relpath;
 			if (strlen(argv[i]) == 3) {
 				// -MQ arg or -MT arg
-				if (i >= argc - 1) {
+				if (i == argc - 1) {
 					cc_log("Missing argument to %s", argv[i]);
 					stats_update(STATS_ARGS);
 					result = false;
@@ -3067,7 +3073,7 @@ cc_process_args(struct args *args, struct args **preprocessor_args,
 		}
 
 		if (str_eq(argv[i], "--serialize-diagnostics")) {
-			if (i >= argc - 1) {
+			if (i == argc - 1) {
 				cc_log("Missing argument to %s", argv[i]);
 				stats_update(STATS_ARGS);
 				result = false;
@@ -3157,7 +3163,7 @@ cc_process_args(struct args *args, struct args **preprocessor_args,
 		// to get better hit rate. A secondary effect is that paths in the standard
 		// error output produced by the compiler will be normalized.
 		if (compopt_takes_path(argv[i])) {
-			if (i == argc-1) {
+			if (i == argc - 1) {
 				cc_log("Missing argument to %s", argv[i]);
 				stats_update(STATS_ARGS);
 				result = false;
@@ -3209,7 +3215,7 @@ cc_process_args(struct args *args, struct args **preprocessor_args,
 
 		// Options that take an argument.
 		if (compopt_takes_arg(argv[i])) {
-			if (i == argc-1) {
+			if (i == argc - 1) {
 				cc_log("Missing argument to %s", argv[i]);
 				stats_update(STATS_ARGS);
 				result = false;
@@ -3773,11 +3779,6 @@ ccache(int argc, char *argv[])
 	cc_log_argv("Command line: ", argv);
 	cc_log("Hostname: %s", get_hostname());
 	cc_log("Working directory: %s", get_current_working_dir());
-
-	if (conf->unify) {
-		cc_log("Direct mode disabled because unify mode is enabled");
-		conf->direct_mode = false;
-	}
 
 	conf->limit_multiple = MIN(MAX(conf->limit_multiple, 0.0), 1.0);
 

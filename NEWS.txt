@@ -17,6 +17,8 @@ New features and improvements
 
 - ccache should now work with distcc's ``pump'' wrapper.
 
+- The optional unifier is no longer disabled when the direct mode is enabled.
+
 
 ccache 3.3.5
 ------------
@@ -32,6 +34,8 @@ Bug fixes
 
 - Fixed matching of directories in the `ignore_headers_in_manifest`
   configuration option.
+
+- Fixed detection of missing argument to `-opt`/`--options-file`.
 
 
 ccache 3.3.4

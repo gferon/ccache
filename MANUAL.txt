@@ -510,7 +510,7 @@ when compiling preprocessed source code.
 *file_stat_matches*::
     ccache normally examines a file's contents to determine whether it matches
     the cached version. With this option set, ccache will consider a file as
-    matching its cached version if the sizes, mtimes and ctimes match.
+    matching its cached version if the mtimes and ctimes match.
 *include_file_ctime*::
     By default, ccache also will not cache a file if it includes a header whose
     ctime is too new. This option disables that check.
@@ -562,8 +562,7 @@ NOTE: In previous versions of ccache, *CCACHE_TEMPDIR* had to be on the same
     unifier changes the hash, so cached compilations produced when the unifier
     is enabled cannot be reused when the unifier is disabled, and vice versa.
     Enabling the unifier may result in incorrect line number information in
-    compiler warning messages and expansions of the *\_\_LINE__* macro. Also
-    note that enabling the unifier implies turning off the direct mode.
+    compiler warning messages and expansions of the *\_\_LINE__* macro.
 
 
 Cache size management
@@ -772,7 +771,6 @@ The direct mode will be disabled if any of the following holds:
 * the configuration setting *direct_mode* is false
 * a modification time of one of the include files is too new (needed to avoid a
   race condition)
-* the unifier is enabled (the configuration setting *unify* is true)
 * a compiler option not supported by the direct mode is used:
 ** a *-Wp,_X_* compiler option other than *-Wp,-MD,_path_*,
    *-Wp,-MMD,_path_* and *-Wp,-D_define_*
