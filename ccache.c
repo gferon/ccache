@@ -2326,6 +2326,7 @@ from_fscache(enum fromcache_call_mode mode, bool put_object_in_manifest)
 				put_data_in_cache(data_dep, size_dep, cached_dep);
 			}
 			memccached_free(cache);
+			stat(cached_obj, &st);
 		} else
 #endif
 		return;
